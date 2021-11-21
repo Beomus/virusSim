@@ -2,13 +2,11 @@ from typing import List
 import matplotlib.pyplot as plt
 import matplotlib.animation as ani
 import numpy as np
-from numpy.core.fromnumeric import repeat
-from numpy.core.numeric import indices
 
 GREY = (0.78, 0.78, 0.78)  # uninfected
-RED = (0.96, 0.15, 0.15)   # infected
-GREEN = (0, 0.86, 0.03)    # recovered
-BLACK = (0, 0, 0)          # dead
+RED = (0.96, 0.15, 0.15)  # infected
+GREEN = (0, 0.86, 0.03)  # recovered
+BLACK = (0, 0, 0)  # dead
 
 COVID19_PARAMS = {
     "r0": 2.28,
@@ -19,7 +17,7 @@ COVID19_PARAMS = {
     "severe_recovery": (21, 42),
     "severe_death": (14, 56),
     "fatality_rate": 0.034,
-    "serial_interval": 7
+    "serial_interval": 7,
 }
 
 
@@ -33,19 +31,30 @@ class Virus:
         self.axes.set_yticklabels([])
         self.axes.set_ylim(0, 1)
 
-
         # create annotations
         self.day_text = self.axes.annotate(
             "Day 0", xy=[np.pi / 2, 1], ha="center", va="bottom"
         )
         self.infected_text = self.axes.annotate(
-            "Infected: 0", xy=[3 * np.pi / 2, 1], ha="center", va="top", color=RED
+            "Infected: 0",
+            xy=[3 * np.pi / 2, 1],
+            ha="center",
+            va="top",
+            color=RED,
         )
         self.deaths_text = self.axes.annotate(
-            "\nDeaths: 0", xy=[3 * np.pi / 2, 1], ha="center", va="top", color=BLACK
+            "\nDeaths: 0",
+            xy=[3 * np.pi / 2, 1],
+            ha="center",
+            va="top",
+            color=BLACK,
         )
         self.recovered_text = self.axes.annotate(
-            "\n\nRecovered: 0", xy=[3 * np.pi / 2, 1], ha="center", va="top", color=GREEN
+            "\n\nRecovered: 0",
+            xy=[3 * np.pi / 2, 1],
+            ha="center",
+            va="top",
+            color=GREEN,
         )
 
         # create member variables
@@ -67,10 +76,18 @@ class Virus:
         self.death_fast = params["incubation"] + params["severe_death"][0]
         self.death_slow = params["incubation"] + params["severe_death"][1]
 
-        self.mild = {i: {"thetas": [], "rs": []} for i in range(self.mild_fast, 365)}
+        self.mild = {
+            i: {"thetas": [], "rs": []} for i in range(self.mild_fast, 365)
+        }
         self.severe = {
-            "recovery": {i: {"thetas": [], "rs": []} for i in range(self.severe_fast, 365)},
-            "death": {i: {"thetas": [], "rs": []} for i in range(self.death_fast, 365)}
+            "recovery": {
+                i: {"thetas": [], "rs": []}
+                for i in range(self.severe_fast, 365)
+            },
+            "death": {
+                i: {"thetas": [], "rs": []}
+                for i in range(self.death_fast, 365)
+            },
         }
 
         self.exposed_before = 0
@@ -78,7 +95,6 @@ class Virus:
 
         self.initialize_population()
 
-        
     def initialize_population(self) -> None:
         population = 4500
         self.num_currently_infected = 1
@@ -88,11 +104,10 @@ class Virus:
         self.rs = np.sqrt(indices / population)
         self.plot = self.axes.scatter(self.thetas, self.rs, s=5, color=GREY)
 
-        # patient 0
+        # patient zero
         self.axes.scatter(self.thetas[0], self.rs[0], s=5, color=RED)
         self.mild[self.mild_fast]["thetas"].append(self.thetas[0])
         self.mild[self.mild_fast]["rs"].append(self.rs[0])
-
 
     def spread_virus(self, i) -> None:
         self.exposed_before = self.exposed_after
@@ -100,7 +115,9 @@ class Virus:
             self.num_new_infected = round(self.r0 * self.total_num_infected)
             self.exposed_after += round(self.num_new_infected * 1.1)
             if self.exposed_after > 4500:
-                self.num_new_infected = round((4500 - self.exposed_before) * 0.9)
+                self.num_new_infected = round(
+                    (4500 - self.exposed_before) * 0.9
+                )
                 self.exposed_after = 4500
             self.num_currently_infected += self.num_new_infected
             self.total_num_infected += self.num_new_infected
@@ -108,7 +125,7 @@ class Virus:
                 np.random.choice(
                     range(self.exposed_before, self.exposed_after),
                     self.num_new_infected,
-                    replace=False
+                    replace=False,
                 )
             )
             thetas = [self.thetas[i] for i in self.new_infected_indices]
@@ -123,7 +140,7 @@ class Virus:
                     self.one_by_one,
                     interval=50,
                     frames=len(theta_chunks),
-                    fargs=(theta_chunks, r_chunks, RED)
+                    fargs=(theta_chunks, r_chunks, RED),
                 )
             else:
                 self.anim2 = ani.FuncAnimation(
@@ -131,9 +148,9 @@ class Virus:
                     self.one_by_one,
                     interval=50,
                     frames=len(thetas),
-                    fargs=(thetas, rs, RED)
+                    fargs=(thetas, rs, RED),
                 )
-            
+
             self.assign_symptoms()
 
         self.day += 1
@@ -141,28 +158,27 @@ class Virus:
         self.update_status()
         self.update_text()
 
-
     def one_by_one(self, i, thetas, rs, color) -> None:
         self.axes.scatter(thetas[i], rs[i], s=5, color=color)
         if i == len(thetas) - 1:
             self.anim2.event_source.stop()
             self.anim.event_source.start()
 
-    
     def chunks(self, a_list, n) -> List:
         for i in range(0, len(a_list), n):
-            yield a_list[i: i+n]
+            yield a_list[i : i + n]
 
-    
     def assign_symptoms(self) -> None:
         num_mild = round(self.percent_mild * self.num_new_infected)
         num_severe = round(self.percent_severe * self.num_new_infected)
-
         # choose random subset of newly infected to have mild symptoms
-        self.mild_indices = np.random.choice(self.new_infected_indices, num_mild, replace=False)
-
+        self.mild_indices = np.random.choice(
+            self.new_infected_indices, num_mild, replace=False
+        )
         # assign the rest severe symptoms, either resulting in recovery or death
-        remaining_indices = [i for i in self.new_infected_indices if i not in self.mild_indices]
+        remaining_indices = [
+            i for i in self.new_infected_indices if i not in self.mild_indices
+        ]
 
         percent_severe_recover = 1 - (self.fatality_rate / self.percent_severe)
         num_severe_recovery = round(percent_severe_recover * num_severe)
@@ -170,8 +186,12 @@ class Virus:
         self.severe_indices = []
         self.death_indices = []
         if remaining_indices:
-            self.severe_indices = np.random.choice(remaining_indices, num_severe_recovery, replace=False)
-            self.death_indices = [i for i in remaining_indices if i not in self.severe_indices]
+            self.severe_indices = np.random.choice(
+                remaining_indices, num_severe_recovery, replace=False
+            )
+            self.death_indices = [
+                i for i in remaining_indices if i not in self.severe_indices
+            ]
 
         # assign recovery/death day
         low = self.day + self.mild_fast
@@ -182,16 +202,18 @@ class Virus:
             mild_r = self.rs[mild]
             self.mild[recovery_day]["thetas"].append(mild_theta)
             self.mild[recovery_day]["rs"].append(mild_r)
-        
+
         low = self.day + self.severe_fast
         high = self.day + self.severe_slow
         for recovery in self.severe_indices:
             recovery_day = np.random.randint(low, high)
             recovery_theta = self.thetas[recovery]
             recovery_r = self.rs[recovery]
-            self.severe["recovery"][recovery_day]["thetas"].append(recovery_theta)
+            self.severe["recovery"][recovery_day]["thetas"].append(
+                recovery_theta
+            )
             self.severe["recovery"][recovery_day]["rs"].append(recovery_r)
-        
+
         low = self.day + self.death_fast
         high = self.day + self.death_slow
         for death in self.death_indices:
@@ -200,7 +222,6 @@ class Virus:
             death_r = self.rs[death]
             self.severe["death"][death_day]["thetas"].append(death_theta)
             self.severe["death"][death_day]["rs"].append(death_r)
-        
 
     def update_status(self) -> None:
         if self.day >= self.mild_fast:
@@ -218,35 +239,29 @@ class Virus:
         if self.day >= self.death_fast:
             death_thetas = self.severe["death"][self.day]["thetas"]
             death_rs = self.severe["death"][self.day]["rs"]
-            self.axes.scatter(death_thetas, death_rs, s=5, color=GREEN)
-            self.num_recovered += len(death_thetas)
+            self.axes.scatter(death_thetas, death_rs, s=5, color=BLACK)
+            self.num_deaths += len(death_thetas)
             self.num_currently_infected -= len(death_thetas)
 
-    
     def update_text(self) -> None:
         self.day_text.set_text(f"Day {self.day}")
         self.infected_text.set_text(f"Infected: {self.num_currently_infected}")
         self.deaths_text.set_text(f"\nDeath: {self.num_deaths}")
         self.recovered_text.set_text(f"\n\nRecovered: {self.num_recovered}")
 
-
     def gen(self) -> None:
         while self.num_deaths + self.num_recovered < self.total_num_infected:
             yield
 
-    
     def animate(self) -> None:
         self.anim = ani.FuncAnimation(
-            self.fig,
-            self.spread_virus,
-            frames=self.gen,
-            repeat=True
+            self.fig, self.spread_virus, frames=self.gen, repeat=True
         )
 
 
 def main():
-    virus = Virus(COVID19_PARAMS)
-    virus.animate()
+    coronavirus = Virus(COVID19_PARAMS)
+    coronavirus.animate()
     plt.show()
 
 
